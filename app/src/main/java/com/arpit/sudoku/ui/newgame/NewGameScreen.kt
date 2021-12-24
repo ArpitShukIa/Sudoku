@@ -1,16 +1,17 @@
 package com.arpit.sudoku.ui.newgame
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.arpit.sudoku.components.BorderValues
 import com.arpit.sudoku.components.BorderedBox
 import com.arpit.sudoku.data.Cell
+import kotlinx.coroutines.launch
 
 @Composable
 fun NewGameScreen(viewModel: NewGameViewModel) {
@@ -88,16 +90,43 @@ fun NumberButtons(onButtonClick: (Int) -> Unit) {
 
 @Composable
 fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+
+    val scale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    var animate by remember { mutableStateOf(false) }
+
+    LaunchedEffect(animate) {
+        if (animate) {
+            scope.launch {
+                animate = false
+                scale.snapTo(1f)
+                scale.animateTo(1.25f)
+                scale.animateTo(1f)
+            }
+        }
+    }
+
     Card(
         shape = RoundedCornerShape(12.dp),
         elevation = 4.dp,
-        modifier = modifier.padding(horizontal = 4.dp)
+        modifier = modifier
+            .padding(horizontal = 4.dp)
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            }
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .clickable(onClick = onClick),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    animate = true
+                    onClick()
+                },
         ) {
             Text(
                 text = number,
