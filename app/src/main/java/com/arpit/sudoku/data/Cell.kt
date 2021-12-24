@@ -7,9 +7,10 @@ import com.arpit.sudoku.ui.theme.*
 
 data class Cell(
     val text: String,
-    val textColor: Color = Color.Black,
+    val textState: CellTextState,
     val border: CellBorder,
     val state: CellState,
+    val preFilled: Boolean,
     val onClick: () -> Unit
 ) {
     val bgColor: Color
@@ -21,6 +22,14 @@ data class Cell(
             CellState.SelectedNonEmpty -> NonEmptyCellColor
             CellState.InRegionOfSelected -> CellInRegionColor
             CellState.Default -> DefaultCellColor
+            CellState.InvalidInput -> CellColorInvalid
+        }
+
+    val textColor: Color
+        @Composable get() = when (textState) {
+            CellTextState.Default -> DefaultTextColor
+            CellTextState.Invalid -> TextColorInvalid
+            CellTextState.Prefilled -> Color.Black
         }
 }
 
@@ -33,5 +42,9 @@ data class CellBorder(
 
 enum class CellState {
     AnimationLight, AnimationMedium, AnimationDark,
-    SelectedEmpty, SelectedNonEmpty, InRegionOfSelected, Default
+    SelectedEmpty, SelectedNonEmpty, InRegionOfSelected, Default, InvalidInput
+}
+
+enum class CellTextState {
+    Prefilled, Invalid, Default
 }

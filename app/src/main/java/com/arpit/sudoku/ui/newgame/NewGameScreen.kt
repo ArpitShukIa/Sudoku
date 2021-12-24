@@ -1,6 +1,7 @@
 package com.arpit.sudoku.ui.newgame
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -103,8 +104,8 @@ fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modif
             scope.launch {
                 animate = false
                 scale.snapTo(1f)
-                scale.animateTo(1.25f)
-                scale.animateTo(1f)
+                scale.animateTo(1.25f, animationSpec = tween(100))
+                scale.animateTo(1f, animationSpec = tween(100))
             }
         }
     }
@@ -129,15 +130,7 @@ fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modif
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    animate = true
-                    onClick()
-                },
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)),
         ) {
             Text(
                 text = number,

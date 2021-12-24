@@ -6,10 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.arpit.sudoku.data.Cell
-import com.arpit.sudoku.data.CellBorder
-import com.arpit.sudoku.data.CellState
-import com.arpit.sudoku.data.SudokuHelper
+import com.arpit.sudoku.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -42,6 +39,8 @@ class NewGameViewModel @Inject constructor(
                         text = "",
                         border = border,
                         state = CellState.Default,
+                        textState = CellTextState.Prefilled,
+                        preFilled = sudoku[i][j] != EMPTY_CELL,
                         onClick = {
                             if (!loading) {
                                 currentCell = i to j
@@ -53,13 +52,7 @@ class NewGameViewModel @Inject constructor(
             }
             animateEntry(sudoku)
             loading = false
-            for (i in 0..80) {
-                val (x, y) = i / 9 to i % 9
-                if (sudoku[x][y] == 0) {
-                    currentCell = x to y
-                    break
-                }
-            }
+            currentCell = sudokuHelper.findFirstEmptyCell(sudoku)
             refreshSudoku()
         }
     }
@@ -77,10 +70,9 @@ class NewGameViewModel @Inject constructor(
             val animatedRows = List(5) { index + it }.associateWith { cellStates.next() }
             sudokuCells = sudokuCells.mapIndexed { i, row ->
                 row.mapIndexed { j, cell ->
-                    val text = sudoku[i][j].let { if (it == 0 || i > index + 2) "" else "$it" }
-                    val state =
-                        if (animatedRows[i] != null) animatedRows[i]!!
-                        else CellState.Default
+                    val text =
+                        sudoku[i][j].let { if (it == EMPTY_CELL || i > index + 2) "" else "$it" }
+                    val state = animatedRows[i] ?: CellState.Default
                     cell.copy(text = text, state = state)
                 }
             }
@@ -89,24 +81,29 @@ class NewGameViewModel @Inject constructor(
     }
 
     private fun refreshSudoku() {
+        val (x, y) = currentCell
+        val inRegionOfSelected: (Int, Int) -> Boolean = { i, j ->
+            i == x || j == y || i / 3 == x / 3 && j / 3 == y / 3
+        }
+        val rawSudoku = sudokuCells.map { row -> row.map { it.text.toIntOrNull() ?: 0 } }
         sudokuCells = sudokuCells.mapIndexed { i, row ->
             row.mapIndexed { j, cell ->
-                val (x, y) = currentCell
-                val currText = sudokuCells[x][y].text
-                val cellState =
-                    if (i == x && j == y)
-                        if (currText.isEmpty())
-                            CellState.SelectedEmpty
-                        else
-                            CellState.SelectedNonEmpty
-                    else
-                        if ((x / 3 == i / 3 && y / 3 == j / 3) || x == i || y == j)
-                            CellState.InRegionOfSelected
-                        else if (currText.isNotEmpty() && cell.text == currText)
-                            CellState.SelectedNonEmpty
-                        else
-                            CellState.Default
-                cell.copy(state = cellState)
+                val num = cell.text.toIntOrNull() ?: EMPTY_CELL
+                val invalid = !sudokuHelper.checkIsSafe(rawSudoku, i, j, num)
+                val textState = when {
+                    cell.preFilled -> CellTextState.Prefilled
+                    invalid -> CellTextState.Invalid
+                    else -> CellTextState.Default
+                }
+                val cellState = when {
+                    i == x && j == y && (num == EMPTY_CELL || (invalid && !cell.preFilled)) -> CellState.SelectedEmpty
+                    (i != x || j != y) && invalid && inRegionOfSelected(i, j) &&
+                            cell.text == sudokuCells[x][y].text -> CellState.InvalidInput
+                    cell.text == sudokuCells[x][y].text && num != EMPTY_CELL -> CellState.SelectedNonEmpty
+                    inRegionOfSelected(i, j) -> CellState.InRegionOfSelected
+                    else -> CellState.Default
+                }
+                cell.copy(state = cellState, textState = textState)
             }
         }
     }
@@ -115,16 +112,13 @@ class NewGameViewModel @Inject constructor(
         if (currentCell == -1 to -1)
             return
         val (x, y) = currentCell
-        if (sudokuCells[x][y].text.isNotEmpty()) return
-        val rawSudoku = sudokuCells.map { row -> row.map { it.text.toIntOrNull() ?: 0 } }
-        if (sudokuHelper.checkIsSafe(rawSudoku, x, y, n)) {
-            sudokuCells = sudokuCells.mapIndexed { i, row ->
-                row.mapIndexed { j, cell ->
-                    if (i to j != currentCell) cell
-                    else cell.copy(text = "$n")
-                }
+        if (sudokuCells[x][y].preFilled) return
+        sudokuCells = sudokuCells.mapIndexed { i, row ->
+            row.mapIndexed { j, cell ->
+                if (i to j != currentCell) cell
+                else cell.copy(text = if (cell.text == "$n") "" else "$n")
             }
-            refreshSudoku()
         }
+        refreshSudoku()
     }
 }
