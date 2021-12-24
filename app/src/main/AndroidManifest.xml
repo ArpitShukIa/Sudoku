@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.arpit.sudoku">
 
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".SudokuApplication"
         android:allowBackup="true"

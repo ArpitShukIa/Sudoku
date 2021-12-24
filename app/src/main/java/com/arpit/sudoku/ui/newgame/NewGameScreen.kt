@@ -13,12 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arpit.sudoku.components.BorderValues
 import com.arpit.sudoku.components.BorderedBox
 import com.arpit.sudoku.data.Cell
+import com.arpit.sudoku.vibrate
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,6 +96,7 @@ fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modif
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     var animate by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     LaunchedEffect(animate) {
         if (animate) {
@@ -111,6 +114,14 @@ fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modif
         elevation = 4.dp,
         modifier = modifier
             .padding(horizontal = 4.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                vibrate(context = context, duration = 25)
+                animate = true
+                onClick()
+            }
             .graphicsLayer {
                 scaleX = scale.value
                 scaleY = scale.value
