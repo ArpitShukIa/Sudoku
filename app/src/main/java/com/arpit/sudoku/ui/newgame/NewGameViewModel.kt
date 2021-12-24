@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 @HiltViewModel
 class NewGameViewModel @Inject constructor(
@@ -19,8 +20,6 @@ class NewGameViewModel @Inject constructor(
 
     var sudokuCells by mutableStateOf(listOf<List<Cell>>())
         private set
-
-    private var loading = true
 
     private var currentCell = -1 to -1
 
@@ -42,7 +41,7 @@ class NewGameViewModel @Inject constructor(
                         textState = CellTextState.Prefilled,
                         preFilled = sudoku[i][j] != EMPTY_CELL,
                         onClick = {
-                            if (!loading) {
+                            if (currentCell != -1 to -1) {
                                 currentCell = i to j
                                 refreshSudoku()
                             }
@@ -51,7 +50,6 @@ class NewGameViewModel @Inject constructor(
                 }
             }
             animateEntry(sudoku)
-            loading = false
             currentCell = sudokuHelper.findFirstEmptyCell(sudoku)
             refreshSudoku()
         }
@@ -85,7 +83,7 @@ class NewGameViewModel @Inject constructor(
         val inRegionOfSelected: (Int, Int) -> Boolean = { i, j ->
             i == x || j == y || i / 3 == x / 3 && j / 3 == y / 3
         }
-        val rawSudoku = sudokuCells.map { row -> row.map { it.text.toIntOrNull() ?: 0 } }
+        val rawSudoku = sudokuCells.map { row -> row.map { it.text.toIntOrNull() ?: EMPTY_CELL } }
         sudokuCells = sudokuCells.mapIndexed { i, row ->
             row.mapIndexed { j, cell ->
                 val num = cell.text.toIntOrNull() ?: EMPTY_CELL
@@ -106,6 +104,7 @@ class NewGameViewModel @Inject constructor(
                 cell.copy(state = cellState, textState = textState)
             }
         }
+        checkCompletion()
     }
 
     fun onNumberButtonClick(n: Int) {
@@ -120,5 +119,40 @@ class NewGameViewModel @Inject constructor(
             }
         }
         refreshSudoku()
+    }
+
+    private fun checkCompletion() {
+        val rawSudoku = sudokuCells.map { row -> row.map { it.text.toIntOrNull() ?: EMPTY_CELL } }
+        for (i in 0..8) for (j in 0..8) {
+            if (rawSudoku[i][j] == EMPTY_CELL ||
+                !sudokuHelper.checkIsSafe(rawSudoku, i, j, rawSudoku[i][j])
+            )
+                return
+        }
+        viewModelScope.launch {
+            celebrateVictory()
+        }
+    }
+
+    private suspend fun celebrateVictory() {
+        val (x, y) = currentCell
+        currentCell = -1 to -1
+        for (index in -4..9) {
+            val cellStates = listOf(
+                CellState.AnimationLight,
+                CellState.AnimationMedium,
+                CellState.AnimationMedium,
+                CellState.AnimationLight,
+            ).iterator()
+            val animatedRows = List(4) { index + it }.associateWith { cellStates.next() }
+            sudokuCells = sudokuCells.mapIndexed { i, row ->
+                row.mapIndexed { j, cell ->
+                    val dist = maxOf(abs(i - x), abs(j - y))
+                    val state = animatedRows[dist] ?: CellState.Default
+                    cell.copy(state = state)
+                }
+            }
+            delay(100)
+        }
     }
 }
