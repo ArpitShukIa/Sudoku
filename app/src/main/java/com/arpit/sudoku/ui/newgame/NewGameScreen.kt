@@ -7,7 +7,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,16 +31,25 @@ import kotlinx.coroutines.launch
 @Composable
 fun NewGameScreen(viewModel: NewGameViewModel) {
     val sudokuCells = viewModel.sudokuCells
-    Column(verticalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxSize()) {
-        SudokuBoard(sudokuCells)
-        NumberButtons(onButtonClick = viewModel::onNumberButtonClick)
+    Column {
+        IconButton(onClick = { /*TODO*/ }, modifier = Modifier.padding(8.dp)) {
+            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "back")
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            SudokuBoard(sudokuCells)
+            NumberButtons(viewModel::onNumberButtonClick)
+            Spacer(modifier = Modifier.height(32.dp))
+        }
     }
 }
 
 @Composable
-private fun SudokuBoard(sudokuCells: List<List<Cell>>) {
+private fun SudokuBoard(sudokuCells: List<List<Cell>>, modifier: Modifier = Modifier) {
     val cellSize = (LocalConfiguration.current.screenWidthDp.dp - 32.dp) / 9
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = modifier.padding(16.dp)) {
         repeat(9) { i ->
             Row {
                 repeat(9) { j ->
@@ -79,8 +92,8 @@ fun SudokuCell(cell: Cell, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun NumberButtons(onButtonClick: (Int) -> Unit) {
-    Row(modifier = Modifier.padding(8.dp)) {
+fun NumberButtons(onButtonClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.padding(8.dp)) {
         for (i in 1..9) {
             NumberButton(
                 number = "$i",
