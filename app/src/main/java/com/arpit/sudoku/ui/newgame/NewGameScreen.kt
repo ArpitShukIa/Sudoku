@@ -1,5 +1,6 @@
 package com.arpit.sudoku.ui.newgame
 
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -20,19 +21,46 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arpit.sudoku.components.BorderValues
 import com.arpit.sudoku.components.BorderedBox
 import com.arpit.sudoku.data.Cell
+import com.arpit.sudoku.data.CellBorder
+import com.arpit.sudoku.data.CellState
+import com.arpit.sudoku.data.CellTextState
 import com.arpit.sudoku.vibrate
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @Composable
-fun NewGameScreen(viewModel: NewGameViewModel) {
-    val sudokuCells = viewModel.sudokuCells
+fun NewGameScreen(viewModel: NewGameViewModel, onBackPressed: () -> Unit) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.newGameEvents.collect { event ->
+            when (event) {
+                NewGameViewModel.NewGameEvents.SignalGameCompleted -> {
+                    Toast.makeText(context, "Game completed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    NewGameScreen(
+        sudokuCells = viewModel.sudokuCells,
+        onNumberButtonClick = viewModel::onNumberButtonClick,
+        onBackPressed = onBackPressed
+    )
+}
+
+@Composable
+private fun NewGameScreen(
+    sudokuCells: List<List<Cell>>,
+    onNumberButtonClick: (Int) -> Unit,
+    onBackPressed: () -> Unit
+) {
     Column {
-        IconButton(onClick = { /*TODO*/ }, modifier = Modifier.padding(8.dp)) {
+        IconButton(onClick = onBackPressed, modifier = Modifier.padding(4.dp)) {
             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "back")
         }
         Column(
@@ -40,7 +68,7 @@ fun NewGameScreen(viewModel: NewGameViewModel) {
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             SudokuBoard(sudokuCells)
-            NumberButtons(viewModel::onNumberButtonClick)
+            NumberButtons(onNumberButtonClick)
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -73,7 +101,7 @@ private fun SudokuBoard(sudokuCells: List<List<Cell>>, modifier: Modifier = Modi
 }
 
 @Composable
-fun SudokuCell(cell: Cell, modifier: Modifier = Modifier) {
+private fun SudokuCell(cell: Cell, modifier: Modifier = Modifier) {
     Box(
         modifier
             .clickable(
@@ -92,7 +120,7 @@ fun SudokuCell(cell: Cell, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun NumberButtons(onButtonClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+private fun NumberButtons(onButtonClick: (Int) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier = modifier.padding(8.dp)) {
         for (i in 1..9) {
             NumberButton(
@@ -105,7 +133,7 @@ fun NumberButtons(onButtonClick: (Int) -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
 
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()

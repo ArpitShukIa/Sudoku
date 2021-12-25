@@ -4,28 +4,44 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arpit.sudoku.data.*
+import com.arpit.sudoku.ui.Destinations
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
 
 @HiltViewModel
 class NewGameViewModel @Inject constructor(
-    private val sudokuHelper: SudokuHelper
+    private val sudokuHelper: SudokuHelper,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val newGameEventsChannel = Channel<NewGameEvents>()
+    val newGameEvents = newGameEventsChannel.receiveAsFlow()
+
+    private val difficulty = savedStateHandle.get<String>(Destinations.DIFFICULTY)!!
 
     var sudokuCells by mutableStateOf(listOf<List<Cell>>())
         private set
 
     private var currentCell = -1 to -1
+    private var gameCompleted = false
 
     init {
         viewModelScope.launch {
-            val sudoku = sudokuHelper.generateSudokuWithEmptyCells(40)
+            val emptyCells = when (Difficulty.valueOf(difficulty)) {
+                Difficulty.EASY -> 20
+                Difficulty.MEDIUM -> 35
+                Difficulty.HARD -> 50
+            }
+            val sudoku = sudokuHelper.generateSudokuWithEmptyCells(emptyCells)
             sudokuCells = List(9) { i ->
                 List(9) { j ->
                     val border = CellBorder(
@@ -56,7 +72,7 @@ class NewGameViewModel @Inject constructor(
     }
 
     private suspend fun animateEntry(sudoku: List<List<Int>>) {
-        delay(500)
+        delay(100)
         for (index in -2..9) {
             val cellStates = listOf(
                 CellState.AnimationLight,
@@ -104,11 +120,12 @@ class NewGameViewModel @Inject constructor(
                 cell.copy(state = cellState, textState = textState)
             }
         }
-        checkCompletion()
+        if (!gameCompleted)
+            checkCompletion()
     }
 
     fun onNumberButtonClick(n: Int) {
-        if (currentCell == -1 to -1)
+        if (gameCompleted || currentCell == -1 to -1)
             return
         val (x, y) = currentCell
         if (sudokuCells[x][y].preFilled) return
@@ -135,8 +152,7 @@ class NewGameViewModel @Inject constructor(
     }
 
     private suspend fun celebrateVictory() {
-        val (x, y) = currentCell
-        currentCell = -1 to -1
+        gameCompleted = true
         for (index in -4..9) {
             val cellStates = listOf(
                 CellState.AnimationLight,
@@ -147,12 +163,17 @@ class NewGameViewModel @Inject constructor(
             val animatedRows = List(4) { index + it }.associateWith { cellStates.next() }
             sudokuCells = sudokuCells.mapIndexed { i, row ->
                 row.mapIndexed { j, cell ->
-                    val dist = maxOf(abs(i - x), abs(j - y))
+                    val dist = maxOf(abs(i - currentCell.first), abs(j - currentCell.second))
                     val state = animatedRows[dist] ?: CellState.Default
                     cell.copy(state = state)
                 }
             }
             delay(100)
         }
+        newGameEventsChannel.send(NewGameEvents.SignalGameCompleted)
+    }
+
+    sealed class NewGameEvents {
+        object SignalGameCompleted : NewGameEvents()
     }
 }
