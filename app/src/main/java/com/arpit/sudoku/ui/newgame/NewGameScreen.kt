@@ -154,3 +154,18 @@ fun NumberButton(number: String, onClick: () -> Unit, modifier: Modifier = Modif
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun NewGameScreenPreview() {
+    val cell = Cell(
+        text = "5",
+        textState = CellTextState.Prefilled,
+        border = CellBorder(1.dp, 1.dp, 1.dp, 1.dp),
+        state = CellState.Default,
+        preFilled = true,
+        onClick = {}
+    )
+    val sudokuCells = List(9) { List(9) { cell } }
+    NewGameScreen(sudokuCells = sudokuCells, onNumberButtonClick = {}, onBackPressed = {})
+}
